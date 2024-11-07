@@ -1,0 +1,63 @@
+# Step 1: Import Necessary Libraries
+import pandas as pd
+import numpy as np
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LinearRegression
+from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
+from sklearn.preprocessing import StandardScaler
+
+# Step 2: Create a Sample Dataset
+# Since we don't have a dataset file, we will generate a synthetic dataset
+# This data can be replaced by uploading a CSV file to Colab, if available
+data = pd.DataFrame({
+    'SquareFootage': np.random.randint(500, 4500, 100),
+    'Bedrooms': np.random.randint(1, 6, 100),
+    'Bathrooms': np.random.randint(1, 5, 100),
+    'Price': np.random.randint(50000, 500000, 100)
+})
+
+# Display the first few rows of the dataset
+print("Sample data:\n", data.head())
+
+# Step 3: Define Features and Target Variable
+X = data[['SquareFootage', 'Bedrooms', 'Bathrooms']]
+y = data['Price']
+
+# Step 4: Split the Data into Training and Test Sets
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+# Step 5: Feature Scaling
+scaler = StandardScaler()
+X_train_scaled = scaler.fit_transform(X_train)
+X_test_scaled = scaler.transform(X_test)
+
+# Step 6: Initialize and Train the Linear Regression Model
+model = LinearRegression()
+model.fit(X_train_scaled, y_train)
+
+# Step 7: Make Predictions on the Test Set
+y_pred = model.predict(X_test_scaled)
+
+# Step 8: Evaluate the Model
+mse = mean_squared_error(y_test, y_pred)
+mae = mean_absolute_error(y_test, y_pred)
+r2 = r2_score(y_test, y_pred)
+
+# Display evaluation metrics
+print("\nModel Performance:")
+print(f"Mean Squared Error (MSE): {mse:.2f}")
+print(f"Mean Absolute Error (MAE): {mae:.2f}")
+print(f"R-squared (R²): {r2:.2f}")
+
+# Step 9: Analyze Model Coefficients
+coefficients = pd.DataFrame({
+    'Feature': X.columns,
+    'Coefficient': model.coef_
+})
+print("\nModel Coefficients:\n", coefficients)
+
+# Step 10: Example Prediction
+example_house = [[2500, 3, 2]]  # Example input: 2500 sqft, 3 bedrooms, 2 bathrooms
+example_house_scaled = scaler.transform(example_house)
+predicted_price = model.predict(example_house_scaled)[0]
+print(f"\nPredicted price for a house with 2500 sqft, 3 bedrooms, and 2 bathrooms: ${predicted_price:.2f}")
