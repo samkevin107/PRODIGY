@@ -1,0 +1,108 @@
+# Import necessary libraries
+import pandas as pd
+import numpy as np
+from sklearn.cluster import KMeans
+from sklearn.preprocessing import StandardScaler
+from sklearn.metrics import silhouette_score
+import matplotlib.pyplot as plt
+import seaborn as sns
+from google.colab import files
+
+# Display initial message to the user
+print("This notebook will perform customer segmentation based on your uploaded data using K-means clustering.")
+print("Please upload a CSV file with numerical data for customer attributes (e.g., spending, age, income, etc.).\n")
+
+# Step 1: Data Upload
+uploaded = files.upload()
+
+# Load the uploaded file into a DataFrame
+for filename in uploaded.keys():
+    data = pd.read_csv(filename)
+
+# Display the first few rows of the dataset to confirm upload
+print("\nUploaded data sample:")
+print(data.head())
+print("\nColumn names in your dataset:")
+print(data.columns)
+
+# Step 2: Data Preprocessing
+# Drop non-numeric columns for clustering
+data_numeric = data.select_dtypes(include=[np.number])
+
+if data_numeric.empty:
+    raise ValueError("No numerical columns found in the uploaded dataset. Please upload a dataset with at least two numerical columns for clustering.")
+
+# Display selected numerical columns
+print("\nUsing the following numerical columns for clustering:")
+print(data_numeric.columns)
+
+# Drop any rows with missing values in numerical columns
+data_numeric.dropna(inplace=True)
+
+# Standardize the data for clustering
+scaler = StandardScaler()
+X_scaled = scaler.fit_transform(data_numeric)
+
+# Step 3: Optimal K Selection using Elbow Method
+inertia = []
+K_range = range(1, 11)
+
+for k in K_range:
+    kmeans = KMeans(n_clusters=k, random_state=42)
+    kmeans.fit(X_scaled)
+    inertia.append(kmeans.inertia_)
+
+# Plot the Elbow Curve
+plt.figure(figsize=(8, 5))
+plt.plot(K_range, inertia, marker='o', linestyle='-', color='b')
+plt.xlabel('Number of Clusters (K)')
+plt.ylabel('Inertia')
+plt.title('Elbow Method for Optimal K')
+plt.show()
+
+# Step 4: Optimal K Selection using Silhouette Score
+silhouette_scores = []
+for k in K_range[1:]:
+    kmeans = KMeans(n_clusters=k, random_state=42)
+    labels = kmeans.fit_predict(X_scaled)
+    silhouette_scores.append(silhouette_score(X_scaled, labels))
+
+# Plot Silhouette Scores
+plt.figure(figsize=(8, 5))
+plt.plot(K_range[1:], silhouette_scores, marker='o', linestyle='-', color='g')
+plt.xlabel('Number of Clusters (K)')
+plt.ylabel('Silhouette Score')
+plt.title('Silhouette Score for Optimal K')
+plt.show()
+
+# Step 5: Final K-means Model with Chosen K
+optimal_k = silhouette_scores.index(max(silhouette_scores)) + 2  # Offset because silhouette_scores starts from k=2
+print(f"\nOptimal number of clusters based on Silhouette Score: {optimal_k}")
+
+# Fit the K-means model with the optimal number of clusters
+kmeans = KMeans(n_clusters=optimal_k, random_state=42)
+data['Cluster'] = kmeans.fit_predict(X_scaled)
+
+# Step 6: Cluster Visualization
+# Visualize using the first two columns (or adjust based on your data)
+plt.figure(figsize=(10, 6))
+sns.scatterplot(x=data_numeric.columns[0], y=data_numeric.columns[1], hue='Cluster', data=data, palette='viridis', s=100, alpha=0.7)
+plt.scatter(scaler.inverse_transform(kmeans.cluster_centers_)[:, 0], 
+            scaler.inverse_transform(kmeans.cluster_centers_)[:, 1], 
+            s=300, c='red', label='Centroids', marker='X')
+plt.title('Customer Segments based on Clustering')
+plt.legend()
+plt.show()
+
+# Step 7: Cluster Analysis and Summary
+# Display mean values for each feature in each cluster
+cluster_summary = data.groupby('Cluster')[data_numeric.columns].mean()
+print("\nCluster Summary (Average Feature Values):")
+print(cluster_summary)
+
+# Save clustered data to CSV
+data.to_csv("customer_segments.csv", index=False)
+print("\nClustered data saved as 'customer_segments.csv'.")
+
+# Download the CSV with cluster labels
+files.download("customer_segments.csv")
